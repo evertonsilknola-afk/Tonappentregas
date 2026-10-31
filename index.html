@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#14532d">
+<title>Meu Controle de Entregas</title>
+<style>
+:root{font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:#17231b;background:#f3f6f3}
+*{box-sizing:border-box}body{margin:0;padding:16px;max-width:620px;margin:auto}
+header{background:#14532d;color:white;padding:20px;border-radius:18px;margin-bottom:14px}
+h1{font-size:23px;margin:0 0 5px}header p{margin:0;opacity:.85;font-size:13px}
+.card{background:white;border-radius:16px;padding:16px;margin:12px 0;box-shadow:0 2px 10px #10201010}
+.center{text-align:center}.muted{color:#65736a;font-size:13px}
+.count{font-size:56px;font-weight:800;line-height:1.2;margin:8px}
+button{border:0;border-radius:12px;padding:13px 16px;font-size:15px;font-weight:700;cursor:pointer}
+.primary{background:#166534;color:white}.secondary{background:#e7eee8;color:#183b25}
+.danger{background:#fee2e2;color:#991b1b}.wide{width:100%}
+.row{display:flex;gap:10px;align-items:center}.row>*{flex:1}
+label{display:block;font-size:13px;font-weight:650;margin:10px 0 5px}
+input{width:100%;padding:12px;border:1px solid #ccd6ce;border-radius:10px;font-size:16px;background:white}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat{background:#edf4ee;padding:13px;border-radius:12px}.stat small{display:block;color:#617067}
+.stat strong{font-size:21px;display:block;margin-top:4px;overflow-wrap:anywhere}
+.entry{display:flex;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid #edf0ed}
+.entry:last-child{border:0}.entry small{display:block;color:#65736a}
+h2{font-size:17px;margin:0 0 10px}.hint{font-size:12px;color:#68766d;line-height:1.45}
+</style>
+</head>
+<body>
+<header><h1>Meu Controle de Entregas</h1><p>Controle diário de pacotes, ganhos e despesas</p></header>
+
+<section class="card center">
+  <div class="muted" id="todayLabel">ENTREGAS DE HOJE</div>
+  <div class="count" id="count">0</div>
+  <div class="row">
+    <button class="secondary" id="minus">− 1</button>
+    <button class="primary" id="plus">＋ Entrega</button>
+  </div>
+</section>
+
+<section class="card">
+  <h2>Valores de hoje</h2>
+  <label for="rate">Valor recebido por entrega (R$)</label>
+  <input id="rate" type="number" min="0" step="0.01" value="2.50">
+  <label for="expense">Despesas de hoje (R$)</label>
+  <input id="expense" type="number" min="0" step="0.01" value="0">
+  <div class="stats" style="margin-top:14px">
+    <div class="stat"><small>Faturamento</small><strong id="gross">R$ 0,00</strong></div>
+    <div class="stat"><small>Lucro estimado</small><strong id="profit">R$ 0,00</strong></div>
+  </div>
+  <p class="hint">O lucro estimado é o faturamento menos as despesas informadas.</p>
+  <button class="primary wide" id="save" style="margin-top:12px">Salvar / atualizar o dia</button>
+</section>
+
+<section class="card">
+  <h2>Resumo</h2>
+  <div class="stats">
+    <div class="stat"><small>Entregas no mês</small><strong id="monthCount">0</strong></div>
+    <div class="stat"><small>Lucro no mês</small><strong id="monthProfit">R$ 0,00</strong></div>
+    <div class="stat"><small>Entregas na semana</small><strong id="weekCount">0</strong></div>
+    <div class="stat"><small>Lucro na semana</small><strong id="weekProfit">R$ 0,00</strong></div>
+  </div>
+</section>
+
+<section class="card">
+  <h2>Histórico</h2>
+  <div id="history" class="muted">Nenhum dia salvo ainda.</div>
+  <div class="row" style="margin-top:12px">
+    <button class="secondary" id="csv">Exportar CSV</button>
+    <button class="danger" id="clear">Apagar histórico</button>
+  </div>
+</section>
+<p class="hint center">Seus registros ficam salvos neste aparelho e neste navegador. Não desinstale nem limpe os dados do navegador sem exportar seu histórico.</p>
+
+<script>
+const $=id=>document.getElementById(id);
+const key='controle-entregas-v1';
+let records={};
+let count=0;
+try{records=JSON.parse(localStorage.getItem(key)||'{}')}catch(e){records={}}
+const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`};
+const money=n=>(Number(n)||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const num=id=>Math.max(0,Number($(id).value)||0);
+const saved=()=>localStorage.setItem(key,JSON.stringify(records));
+function current(){return records[today()]||{count:0,rate:2.5,expense:0}}
+function render(){
+  const r=current(); count=r.count||0;
+  $('todayLabel').textContent='ENTREGAS DE HOJE · '+today().split('-').reverse().join('/');
+  $('count').textContent=count;
+  $('rate').value=r.rate??2.5; $('expense').value=r.expense??0;
+  const gross=count*num('rate'), profit=gross-num('expense');
+  $('gross').textContent=money(gross); $('profit').textContent=money(profit);
+  const vals=Object.entries(records).map(([date,v])=>({date,...v}));
+  const now=new Date(), month=now.toISOString().slice(0,7);
+  const start=new Date(now); start.setHours(0,0,0,0); start.setDate(start.getDate()-((start.getDay()+6)%7));
+  const weekStart=`${start.getFullYear()}-${String(start.getMonth()+1).padStart(2,'0')}-${String(start.getDate()).padStart(2,'0')}`;
+  const sum=(arr,field)=>arr.reduce((s,v)=>s+(Number(v[field])||0),0);
+  const calcProfit=v=>(Number(v.count)||0)*(Number(v.rate)||0)-(Number(v.expense)||0);
+  const m=vals.filter(v=>v.date.startsWith(month)), w=vals.filter(v=>v.date>=weekStart&&v.date<=today());
+  $('monthCount').textContent=sum(m,'count'); $('weekCount').textContent=sum(w,'count');
+  $('monthProfit').textContent=money(m.reduce((s,v)=>s+calcProfit(v),0));
+  $('weekProfit').textContent=money(w.reduce((s,v)=>s+calcProfit(v),0));
+  const hist=vals.sort((a,b)=>b.date.localeCompare(a.date));
+  $('history').innerHTML=hist.length?hist.map(v=>`<div class="entry"><div><b>${v.date.split('-').reverse().join('/')}</b><small>${v.count} entregas · Faturamento ${money(v.count*v.rate)}</small></div><b>${money(calcProfit(v))}</b></div>`).join(''):'Nenhum dia salvo ainda.';
+}
+function persistToday(){records[today()]={count,rate:num('rate'),expense:num('expense')};saved();render()}
+$('plus').onclick=()=>{count++;persistToday()};
+$('minus').onclick=()=>{count=Math.max(0,count-1);persistToday()};
+$('rate').oninput=()=>{records[today()]={count,rate:num('rate'),expense:num('expense')};saved();render()};
+$('expense').oninput=()=>{records[today()]={count,rate:num('rate'),expense:num('expense')};saved();render()};
+$('save').onclick=()=>persistToday();
+$('clear').onclick=()=>{if(confirm('Tem certeza que deseja apagar todo o histórico?')){records={};saved();render()}};
+$('csv').onclick=async()=>{
+ const rows=[['Data','Entregas','Valor por entrega','Faturamento','Despesas','Lucro']];
+ Object.entries(records).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([d,v])=>rows.push([d,v.count,v.rate,v.count*v.rate,v.expense,v.count*v.rate-v.expense]));
+ const csv='\ufeff'+rows.map(r=>r.join(';')).join('\n');
+ const P=window.Capacitor&&window.Capacitor.Plugins;
+ if(P&&P.Filesystem&&P.Share){
+  try{
+   const f=await P.Filesystem.writeFile({path:'historico-entregas.csv',data:csv,directory:'CACHE',encoding:'utf8'});
+   await P.Share.share({title:'Histórico de entregas',url:f.uri});
+   return;
+  }catch(e){if(e&&String(e.message||e).toLowerCase().includes('cancel'))return}
+ }
+ const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+ const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='historico-entregas.csv';a.click();URL.revokeObjectURL(a.href);
+};
+render();
+</script>
+</body>
+</html>

@@ -1,0 +1,21 @@
+COMO GERAR O APK NO GITHUB
+
+ESTRUTURA DO REPOSITÓRIO (precisa ficar assim):
+  src/index.html
+  .github/workflows/build-apk.yml
+  package.json
+  capacitor.config.json
+
+PASSO A PASSO:
+1. Crie um repositório no GitHub.
+2. Envie os arquivos package.json, capacitor.config.json e a pasta src
+   (Add file > Upload files).
+3. A pasta .github é oculta e muitas vezes NÃO sobe no upload. Crie assim:
+   Add file > Create new file. No nome do arquivo digite exatamente:
+       .github/workflows/build-apk.yml
+   (ao digitar as barras, o GitHub cria as pastas sozinho).
+   Cole dentro o conteúdo do arquivo COPIE-PARA-github-workflows-build-apk.yml
+   e clique em Commit changes.
+4. Vá na aba Actions > Build APK > Run workflow.
+5. Em ~5 minutos baixe "controle-de-entregas-apk" em Artifacts,
+   extraia o ZIP e instale o app-debug.apk.
